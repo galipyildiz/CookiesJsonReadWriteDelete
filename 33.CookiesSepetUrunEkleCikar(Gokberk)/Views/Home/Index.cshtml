@@ -1,0 +1,164 @@
+﻿@model List<_33.CookiesSepetUrunEkleCikar_Gokberk_.Models.Product>
+@{
+    ViewBag.Title = "Home Page";
+}
+<div class="row">
+    <div class="col-md-3 order-md-2 mb-4 mr-1">
+        <h4 class="d-flex justify-content-between align-items-center mb-3">
+            <span class="text-muted">Your cart</span>
+            <span id="sayi" class="badge badge-secondary badge-pill"></span>
+        </h4>
+        <ul id="sepet" class="list-group mb-3">
+
+        </ul>
+
+        <form id="promoCode" name="kod" class="card p-2">
+            <div class="input-group">
+                <input name="kod" type="text" class="form-control" placeholder="Promo code">
+                <div class="input-group-append">
+                    <button type="submit" class="btn btn-secondary">Redeem</button>
+                </div>
+            </div>
+        </form>
+    </div>
+    <div class="col-md-8">
+        <div class="container">
+            <div class="card-deck mb-3 text-center">
+                @foreach (var item in Model)
+                {
+                    <div class="card mb-4 box-shadow">
+                        <div class="card-header">
+                            <h4 class="my-0 font-weight-normal">@item.Name</h4>
+                        </div>
+                        <div class="card-body">
+                            <h1 class="card-title pricing-card-title">Price: @item.Price.ToString("C") </h1>
+                            <p class="mt-3 mb-4">Description: @item.Description</p>
+                            <form class="frm" method="post">
+                                <input type="hidden" id="@item.Id" name="id" />
+                                <button type="submit" class="satin-al btn btn-lg btn-block btn-outline-primary">Satın Al</button>
+                            </form>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+</div>
+@section scripts{
+    <script>
+        toastr.options = {
+            "closeButton": false,
+            "debug": false,
+            "newestOnTop": false,
+            "progressBar": false,
+            "positionClass": "toast-top-right",
+            "preventDuplicates": false,
+            "onclick": null,
+            "showDuration": "300",
+            "hideDuration": "1000",
+            "timeOut": "5000",
+            "extendedTimeOut": "1000",
+            "showEasing": "swing",
+            "hideEasing": "linear",
+            "showMethod": "fadeIn",
+            "hideMethod": "fadeOut"
+        }
+        //https://stackoverflow.com/questions/5316697/jquery-return-data-after-ajax-call-success
+        $('.frm').submit(function (e) {
+            e.preventDefault();
+            $.ajax({
+                type: "post",
+                url: "@Url.Action("SatinAl","Cookie")",
+                data: { id: parseInt($(this)[0][0].id) },
+                success: function (data) {
+                    toastr["success"]("Ürün sepete eklendi!", "Başarılı")
+                    sepetiYenile();
+                }
+            });
+        });
+        $("body").on("click", ".frmSil > .btnSil", function (e) {
+            e.preventDefault();
+            var form = $(this).parent()[0][0].id;
+            console.log();
+            $.ajax({
+                type: "post",
+                url: "@Url.Action("Sil","Cookie")",
+                data: { id: form.substring(0, 1) },
+                success: function (data) {
+                    toastr["info"]("Ürün sepetten çıkarıldı!", "Başarılı")
+                    $(this).parent().remove();
+                    sepetiYenile();
+                } 
+            });
+        });
+       
+        $("#promoCode").submit(function (e) {
+            e.preventDefault();
+            var kod = $(this).serialize();
+            $.ajax({
+                type: "post",
+                url: "@Url.Action("Indirim","Cookie")",
+                data: { kod: kod.substring(4) },
+                success: function (data) {
+                    var promocode = data.Promocode
+                    if (promocode == "galip50") {
+                        toastr["success"]("%50 indirim uygulandı.", "Başarılı")
+                        $("#totalPrice").html(`₺${data.TotalPrice}`);
+                        $("#sepet").prepend(`<li class="list-group-item d-flex justify-content-between text-success">
+                <span>Discount: %50 </span>
+                <strong>${promocode}</strong>
+            </li>`);
+                        
+                    }
+                    else {
+                        toastr["warning"]("Girilen kod hatalı yada kullanılmış.", "Başarısız")
+                    }
+                }
+            });
+        });
+
+        function sepetiYenile(){
+            $.ajax({
+                type: "get",
+                url: "@Url.Action("Listele","Cookie")",
+                success: function (data) {
+                    if (data == null) {
+                        $("#sayi").html("");
+                        return;
+                    }
+                    else {
+                        $("#sepet").html("");
+                        var products = data.Products;
+                        var promoCode = data.Promocode;
+                        var count = data.Count;
+                        for (var item of products) {
+                            $("#sepet").append(`<li class="list-group-item d-flex justify-content-between lh-condensed">
+                <div>
+                    <h6 class="my-0">${item.Name}</h6>
+                    <small class="text-muted">Price: ₺${item.Price}</small>
+                </div>
+                 <form class="frmSil" method="post">
+                                <input type="hidden" id="${item.Id} name="id" />
+                                <button class="btnSil" type="submit">X</button>
+                            </form>
+            </li>`);
+                            $("#sayi").html(`${count}`);
+                        }
+                        $("#sepet").append(`<li class="list-group-item d-flex justify-content-between">
+                <span>Total Price: </span>
+                <strong id="totalPrice">₺${data.TotalPrice}</strong>
+            </li>`)
+                    }
+                    if (promoCode == "galip50") {
+                        $("#sepet").prepend(`<li class="list-group-item d-flex justify-content-between text-success">
+                <span>Discount: -%50 </span>
+                <strong>₺${promoCode}</strong>
+            </li>`);
+                    }
+                }
+            });
+        }
+        sepetiYenile();
+    </script>
+}
